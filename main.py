@@ -317,8 +317,9 @@ def main(config_file):
         else:
             print("Error! cannot create the database connection.")
         
-        df.to_csv('linkedin_jobs.csv', index=False, encoding='utf-8')
-        df_filtered.to_csv('linkedin_jobs_filtered.csv', index=False, encoding='utf-8')
+        df.to_csv('linkedin_jobs.csv', mode='a', header=False, index=False, encoding='utf-8')
+
+        df_filtered.to_csv('linkedin_jobs_filtered.csv', mode='a', header=False, index=False, encoding='utf-8')
     else:
         print("No jobs found")
     
