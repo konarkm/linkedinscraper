@@ -11,6 +11,9 @@ import pandas as pd
 from urllib.parse import quote
 from langdetect import detect
 from langdetect.lang_detect_exception import LangDetectException
+import openai
+import asyncio
+import json
 
 
 def load_config(file_name):
@@ -65,7 +68,8 @@ def transform(soup):
             'applied': 0,
             'hidden': 0,
             'interview': 0,
-            'rejected': 0
+            'rejected': 0,
+            'json': ''
         }
         joblist.append(job)
     return joblist
@@ -260,11 +264,80 @@ def find_new_jobs(all_jobs, conn, config):
     new_joblist = [job for job in all_jobs if not job_exists(jobs_db, job) and not job_exists(filtered_jobs_db, job)]
     return new_joblist
 
-def main(config_file):
+async def get_response(description, client):
+    # Get the response from OpenAI based on the job description
+
+    # Set up the system prompt
+    system_prompt = """You are a an assistant who reads job descriptions and is designed to output JSON with values depending on the following. Do not vary from the format. Focus on the requirements/required qualifications/minimum requirements section, and disregard the rest (including things like the preferred qualifications sections) There are 2 parts in the output:
+     1. key: "education", value: 0 for no college experience, 1 for bachelor's degree (BS/BA), 2 for Master's degree, 3 for PhD. This value should be set based on the minimum required in the description.
+     2. key: "experience", value: integer corresponding to the minimum years of experience required. For example, "2+" would result in the value being 2, "at least 3" would be 3, and if experience is not mentioned it would be 0.
+
+     If you are unable to figure out any of the values, set them to 0."""
+    
+    # Set up the user prompt
+    user_prompt = str(description)
+
+    # Get the response from OpenAI in JSON format
+    try:
+        completion = await client.chat.completions.create(
+            model="gpt-4o-mini",
+            response_format={ "type": "json_object" },
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt},
+            ],
+        )
+        response = completion.choices[0].message.content
+    except Exception as e:
+        print(f"Error connecting to OpenAI: {e}")
+        # response = json.dumps({"education": 0, "experience": 0})
+    
+    return response
+
+async def update_dataframe(df, client, config):
+    # Update the dataframe with the JSON response from OpenAI, and hide jobs based on the user's information (currently education and experience).
+
+    # Filter out rows where the JSON column is null
+    filtered_df = df[~df['json'].isnull()].copy()
+
+    # Create a list of tasks to get the response from OpenAI
+    tasks = [get_response(description, client) for description in filtered_df['job_description']]
+
+    # Run the tasks concurrently
+    responses = await asyncio.gather(*tasks)
+
+    # Set the JSON response in the dataframe
+    filtered_df['json'] = responses
+
+    # Get the user's info from the config file
+    user_education = config["user_info"]["education"]
+    user_experience = config["user_info"]["experience"]
+
+    # Update the hidden column based on the JSON response in filtered_df.
+    # Specifically, if the user's education and experience are less than or equal to the values in the JSON response, the job is hidden.
+    # Note: json.loads only here and not stored in the df because sqlite3 doesn't support JSON columns, and so the json column is saved as a JSON string.
+    filtered_df['hidden'] = filtered_df['json'].apply(
+        lambda x: 1 if json.loads(x).get('education') <= user_education and json.loads(x).get('experience') <= user_experience else 0
+    )
+
+    # Print the number of jobs to add, the number of jobs hidden by AI, and the final number of jobs to add
+    filtered_df_rows = len(filtered_df)
+    hidden_rows = len(filtered_df[filtered_df['hidden'] == 1])
+    print("Total number of jobs to add:", filtered_df_rows)
+    print("Number of jobs that were hidden by AI:", hidden_rows)
+    print("Final number of jobs to add:", filtered_df_rows - hidden_rows)
+
+    # Update the main dataframe with values from filtered_df
+    df.loc[filtered_df.index, ['json', 'hidden']] = filtered_df[['json', 'hidden']]
+
+    return df
+
+async def main(config_file):
     start_time = tm.perf_counter()
     job_list = []
 
     config = load_config(config_file)
+    client = openai.AsyncOpenAI(api_key=config["OpenAI_API_KEY"])
     jobs_tablename = config['jobs_tablename'] # name of the table to store the "approved" jobs
     filtered_jobs_tablename = config['filtered_jobs_tablename'] # name of the table to store the jobs that have been filtered out based on description keywords (so that in future they are not scraped again)
     #Scrape search results page and get job cards. This step might take a while based on the number of pages and search queries.
@@ -296,6 +369,7 @@ def main(config_file):
         #Create a list for jobs removed based on job description keywords - they will be added to the filtered_jobs table
         filtered_list = [job for job in job_list if job not in jobs_to_add]
         df = pd.DataFrame(jobs_to_add)
+        df = await update_dataframe(df, client, config)
         df_filtered = pd.DataFrame(filtered_list)
         df['date_loaded'] = datetime.now()
         df_filtered['date_loaded'] = datetime.now()
@@ -332,4 +406,4 @@ if __name__ == "__main__":
     if len(sys.argv) == 2:
         config_file = sys.argv[1]
         
-    main(config_file)
+    asyncio.run(main(config_file))
