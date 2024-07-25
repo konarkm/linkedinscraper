@@ -310,20 +310,20 @@ async def update_dataframe(df, client, config):
     filtered_df['json'] = responses
 
     # Get the user's info from the config file
-    user_education = config["user_info"]["education"]
-    user_experience = config["user_info"]["experience"]
+    user_education = int(config["user_info"]["education"])
+    user_experience = int(config["user_info"]["experience"])
 
     # Update the hidden column based on the JSON response in filtered_df.
     # Specifically, if the user's education and experience are less than or equal to the values in the JSON response, the job is hidden.
     # Note: json.loads only here and not stored in the df because sqlite3 doesn't support JSON columns, and so the json column is saved as a JSON string.
     filtered_df['hidden'] = filtered_df['json'].apply(
-        lambda x: 1 if json.loads(x).get('education') <= user_education and json.loads(x).get('experience') <= user_experience else 0
+        lambda x: 1 if json.loads(x).get('education') <= user_education or json.loads(x).get('experience') <= user_experience else 0
     )
 
     # Print the number of jobs to add, the number of jobs hidden by AI, and the final number of jobs to add
     filtered_df_rows = len(filtered_df)
     hidden_rows = len(filtered_df[filtered_df['hidden'] == 1])
-    print("Total number of jobs to add:", filtered_df_rows)
+    # print("Total number of jobs to add:", filtered_df_rows)
     print("Number of jobs that were hidden by AI:", hidden_rows)
     print("Final number of jobs to add:", filtered_df_rows - hidden_rows)
 
