@@ -1,6 +1,6 @@
-# UPDATE August 2023.
+# UPDATE July 2024.
 
-New version includes OpenAI integration for cover letter generation. See below for how to configure config.json file.
+New version includes GPT-4o mini based job hiding, which compares the job description to your information, and hides the job based on if you meet the minimum qualifications or not.
 
 ## LinkedIn Job Scraper
 
