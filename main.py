@@ -317,7 +317,7 @@ async def update_dataframe(df, client, config):
     # Specifically, if the user's education and experience are less than or equal to the values in the JSON response, the job is hidden.
     # Note: json.loads only here and not stored in the df because sqlite3 doesn't support JSON columns, and so the json column is saved as a JSON string.
     filtered_df['hidden'] = filtered_df['json'].apply(
-        lambda x: 1 if json.loads(x).get('education') <= user_education or json.loads(x).get('experience') <= user_experience else 0
+        lambda x: 1 if json.loads(x).get('education') > user_education or json.loads(x).get('experience') > user_experience else 0
     )
 
     # Print the number of jobs to add, the number of jobs hidden by AI, and the final number of jobs to add
