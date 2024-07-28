@@ -239,12 +239,12 @@ def get_jobcards(config):
                 soup = get_with_retry(url, config)
                 jobs = transform(soup)
                 all_jobs = all_jobs + jobs
-                print("Finished scraping page: ", url)
-    print ("Total job cards scraped: ", len(all_jobs))
+                print("Finished scraping page:", url)
+    print ("Total job cards scraped:", len(all_jobs))
     all_jobs = remove_duplicates(all_jobs, config)
-    print ("Total job cards after removing duplicates: ", len(all_jobs))
+    print ("Total job cards after removing duplicates (from all the scraped jobs):", len(all_jobs))
     all_jobs = remove_irrelevant_jobs(all_jobs, config)
-    print ("Total job cards after removing irrelevant jobs: ", len(all_jobs))
+    print ("Total job cards after removing irrelevant jobs (based on config filters):", len(all_jobs))
     return all_jobs
 
 def find_new_jobs(all_jobs, conn, config):
@@ -345,7 +345,7 @@ async def main(config_file):
     conn = create_connection(config)
     #filtering out jobs that are already in the database
     all_jobs = find_new_jobs(all_jobs, conn, config)
-    print ("Total new jobs found after comparing to the database: ", len(all_jobs))
+    print ("Total new jobs found after removing those that are already in the database:", len(all_jobs))
 
     if len(all_jobs) > 0:
 
@@ -365,7 +365,7 @@ async def main(config_file):
             job_list.append(job)
         #Final check - removing jobs based on job description keywords words from the config file
         jobs_to_add = remove_irrelevant_jobs(job_list, config)
-        print ("Total jobs to add: ", len(jobs_to_add))
+        print ("Total jobs to screen with AI:", len(jobs_to_add))
         #Create a list for jobs removed based on job description keywords - they will be added to the filtered_jobs table
         filtered_list = [job for job in job_list if job not in jobs_to_add]
         df = pd.DataFrame(jobs_to_add)
