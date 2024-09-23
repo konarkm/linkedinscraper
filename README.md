@@ -91,7 +91,9 @@ The `config.json` file contains the configuration options for the scraper and th
 - `pages_to_scrape`: The number of pages to scrape for each search query.
 - `rounds`: The number of times to run the scraper. LinkedIn doesn't always show the same results for the same search query, so running the scraper multiple times will increase the number of job postings scraped. I set up a cron job that runs every hour during the day.
 - `days_toscrape`: The number of days to scrape. The scraper will ignore job postings older than this number of days.
-- 'user_info': The users info that is used to hide jobs they are likely unqualified for. Set the 'education' key with: 0 for no college education, 1 for bachelor's degree, 2 for master's degree, and 3 for PhD. Set the 'experience' key with: the integer corresponding to the years of experience you have, or want to filter for (for example, if you have 1.5 years of experience, you may want to set this to 2).
+- `user_info`: A dictionary for the users info that is used to hide jobs they are likely unqualified for, with the following keys:
+  - `education`: 0 for no college education, 1 for bachelor's degree, 2 for master's degree, and 3 for PhD.
+  - `experience`: integer corresponding to the years of experience you have/want to filter for (e.g., if you have 1.5 years of experience, you may want to set this to 2).
 
 ### What remains to be done
 
