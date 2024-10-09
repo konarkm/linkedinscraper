@@ -357,11 +357,14 @@ async def main(config_file):
                 continue
             print('Found new job: ', job['title'], 'at ', job['company'], job['job_url'])
             desc_soup = get_with_retry(job['job_url'], config)
-            job['job_description'] = transform_job(desc_soup)
+            job_description = transform_job(desc_soup)
+            if job_description == "Could not find Job Description":
+                continue
+            job['job_description'] = job_description
             language = safe_detect(job['job_description'])
             if language not in config['languages']:
                 print('Job description language not supported: ', language)
-                #continue
+                continue
             job_list.append(job)
         #Final check - removing jobs based on job description keywords words from the config file
         jobs_to_add = remove_irrelevant_jobs(job_list, config)
