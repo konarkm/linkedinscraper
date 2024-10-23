@@ -13,3 +13,4 @@ indeed.py
 *.sh
 *.log
 SupabaseUpload/
+/configs
